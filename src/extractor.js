@@ -3,10 +3,23 @@ import MarkdownIt from 'markdown-it';
 const md = new MarkdownIt({ html: true }).enable('strikethrough');
 
 export function extractSegments(markdown) {
-  const tokens = md.parse(markdown, {});
+  const stripped = stripFrontmatter(markdown);
+  const tokens = md.parse(stripped, {});
   const segments = [];
   collectSegments(tokens, segments);
   return segments;
+}
+
+function stripFrontmatter(text) {
+  // YAML frontmatter: starts with --- on first line, ends with ---
+  const yamlMatch = text.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+  if (yamlMatch) return text.slice(yamlMatch[0].length);
+
+  // TOML frontmatter: starts with +++ on first line, ends with +++
+  const tomlMatch = text.match(/^\+\+\+\r?\n[\s\S]*?\r?\n\+\+\+\r?\n?/);
+  if (tomlMatch) return text.slice(tomlMatch[0].length);
+
+  return text;
 }
 
 function collectSegments(tokens, segments) {

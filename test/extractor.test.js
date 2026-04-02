@@ -83,4 +83,32 @@ describe('extractSegments', () => {
     assert.ok(joined.includes('deleted'));
     assert.ok(!joined.includes('~~'));
   });
+
+  it('skips YAML frontmatter', () => {
+    const md = '---\ntitle: My Doc\ndate: 2026-01-01\n---\n\n# Hello\n\nContent here.';
+    const segments = extractSegments(md);
+    const allText = segments.map(s => s.text).join(' ');
+    assert.ok(!allText.includes('title'));
+    assert.ok(!allText.includes('My Doc'));
+    assert.ok(!allText.includes('2026'));
+    assert.ok(allText.includes('Hello'));
+    assert.ok(allText.includes('Content here'));
+  });
+
+  it('skips TOML frontmatter', () => {
+    const md = '+++\ntitle = "My Doc"\n+++\n\n# Hello\n\nContent here.';
+    const segments = extractSegments(md);
+    const allText = segments.map(s => s.text).join(' ');
+    assert.ok(!allText.includes('title'));
+    assert.ok(!allText.includes('My Doc'));
+    assert.ok(allText.includes('Hello'));
+  });
+
+  it('does not skip --- that is not frontmatter', () => {
+    const md = '# Title\n\nSome content.\n\n---\n\nMore content.';
+    const segments = extractSegments(md);
+    const allText = segments.map(s => s.text).join(' ');
+    assert.ok(allText.includes('Some content'));
+    assert.ok(allText.includes('More content'));
+  });
 });
