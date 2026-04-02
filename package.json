@@ -1,0 +1,24 @@
+{
+  "name": "claude-briefer",
+  "version": "0.1.0",
+  "description": "Detect and remove redundant content across markdown files",
+  "bin": {
+    "claude-briefer": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/**/*.test.js",
+    "start": "node bin/cli.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "express": "^5.2.1",
+    "glob": "^13.0.6",
+    "markdown-it": "^14.1.1",
+    "natural": "^8.1.1",
+    "open": "^11.0.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
+  }
+}
