@@ -7,24 +7,80 @@ export function renderFileList(files, { onSelect, activeFile, filter }) {
     ? files.filter(f => f.path.toLowerCase().includes(filter.toLowerCase()))
     : files;
 
+  // Build tree structure
+  const tree = {};
   for (const file of filtered) {
-    const li = document.createElement('li');
-    if (file.path === activeFile) li.classList.add('active');
-    li.onclick = () => onSelect(file.path);
+    const parts = file.path.split('/');
+    let node = tree;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!node[parts[i]]) node[parts[i]] = {};
+      node = node[parts[i]];
+    }
+    node[parts[parts.length - 1]] = file;
+  }
 
-    const name = document.createElement('span');
-    name.textContent = file.path;
+  renderTreeNode(ul, tree, '', { onSelect, activeFile, maxScore, depth: 0 });
+}
+
+function renderTreeNode(container, node, prefix, opts) {
+  const dirs = [];
+  const files = [];
+
+  for (const [name, value] of Object.entries(node)) {
+    if (value && typeof value === 'object' && !value.path) {
+      dirs.push([name, value]);
+    } else {
+      files.push([name, value]);
+    }
+  }
+
+  // Sort dirs and files alphabetically
+  dirs.sort((a, b) => a[0].localeCompare(b[0]));
+  files.sort((a, b) => a[0].localeCompare(b[0]));
+
+  for (const [name, children] of dirs) {
+    const dirEl = document.createElement('div');
+    dirEl.className = 'tree-dir';
+    dirEl.style.paddingLeft = `${8 + opts.depth * 16}px`;
+    dirEl.innerHTML = `<span class="tree-dir-icon">&#9662;</span> ${escapeHtml(name)}`;
+    dirEl.onclick = (e) => {
+      e.stopPropagation();
+      dirEl.classList.toggle('collapsed');
+    };
+    container.appendChild(dirEl);
+
+    const childContainer = document.createElement('div');
+    childContainer.className = 'tree-dir-children';
+    renderTreeNode(childContainer, children, prefix ? `${prefix}/${name}` : name, {
+      ...opts,
+      depth: opts.depth + 1,
+    });
+    container.appendChild(childContainer);
+  }
+
+  for (const [name, file] of files) {
+    const fileEl = document.createElement('div');
+    fileEl.className = 'tree-file';
+    if (file.path === opts.activeFile) fileEl.classList.add('active');
+    fileEl.style.paddingLeft = `${8 + opts.depth * 16}px`;
+    fileEl.onclick = () => opts.onSelect(file.path);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = name;
+    nameSpan.style.overflow = 'hidden';
+    nameSpan.style.textOverflow = 'ellipsis';
+    nameSpan.style.whiteSpace = 'nowrap';
 
     const bar = document.createElement('div');
     bar.className = 'redundancy-bar';
     const fill = document.createElement('div');
     fill.className = 'redundancy-bar-fill';
-    fill.style.width = `${Math.min(100, (file.redundancyScore / maxScore) * 100)}%`;
+    fill.style.width = `${Math.min(100, (file.redundancyScore / opts.maxScore) * 100)}%`;
     bar.appendChild(fill);
 
-    li.appendChild(name);
-    li.appendChild(bar);
-    ul.appendChild(li);
+    fileEl.appendChild(nameSpan);
+    fileEl.appendChild(bar);
+    container.appendChild(fileEl);
   }
 }
 

@@ -5,8 +5,8 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: #1e1e1e;
+  color: #d4d4d4;
 }
 
 #topbar {
@@ -14,8 +14,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background: #16213e;
-  border-bottom: 1px solid #0f3460;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
   font-size: 13px;
 }
 
@@ -26,7 +26,15 @@ body {
 }
 
 #controls label { display: flex; align-items: center; gap: 6px; }
-#controls select, #controls input[type="range"] { cursor: pointer; }
+#controls select {
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+#controls input[type="range"] { cursor: pointer; }
 
 #panels {
   flex: 1;
@@ -35,54 +43,83 @@ body {
 }
 
 #file-list {
-  width: 240px;
-  border-right: 1px solid #0f3460;
+  width: 260px;
+  border-right: 1px solid #3c3c3c;
   display: flex;
   flex-direction: column;
-  background: #16213e;
+  background: #252526;
 }
 
 #file-search {
   padding: 8px;
   border: none;
-  border-bottom: 1px solid #0f3460;
-  background: #1a1a2e;
-  color: #e0e0e0;
+  border-bottom: 1px solid #3c3c3c;
+  background: #1e1e1e;
+  color: #d4d4d4;
   font-size: 13px;
   outline: none;
 }
+
+#file-search::placeholder { color: #888; }
 
 #files {
   list-style: none;
   overflow-y: auto;
   flex: 1;
+  padding: 4px 0;
 }
 
-#files li {
-  padding: 8px 12px;
+/* Tree view styles */
+.tree-dir {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #ccc;
+  font-weight: 600;
   cursor: pointer;
-  border-bottom: 1px solid #0f3460;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tree-dir:hover { background: #2a2d2e; }
+
+.tree-dir-icon {
+  font-size: 10px;
+  width: 12px;
+  display: inline-block;
+  transition: transform 0.1s;
+}
+
+.tree-dir.collapsed .tree-dir-icon { transform: rotate(-90deg); }
+.tree-dir-children { }
+.tree-dir.collapsed + .tree-dir-children { display: none; }
+
+.tree-file {
+  padding: 3px 8px;
+  cursor: pointer;
   font-size: 13px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-#files li:hover { background: #1a1a3e; }
-#files li.active { background: #0f3460; }
+.tree-file:hover { background: #2a2d2e; }
+.tree-file.active { background: #37373d; }
 
 .redundancy-bar {
   width: 40px;
-  height: 6px;
-  background: #333;
-  border-radius: 3px;
+  height: 4px;
+  background: #3c3c3c;
+  border-radius: 2px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .redundancy-bar-fill {
   height: 100%;
-  border-radius: 3px;
-  background: #e94560;
+  border-radius: 2px;
+  background: #f48771;
 }
 
 #editor-panel {
@@ -97,33 +134,27 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: #16213e;
-  border-bottom: 1px solid #0f3460;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
   font-size: 13px;
+  gap: 8px;
 }
 
-#save-btn {
+#editor-toolbar button {
   padding: 4px 12px;
-  background: #0f3460;
-  color: #e0e0e0;
-  border: 1px solid #533483;
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border: 1px solid #555;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
+  white-space: nowrap;
 }
 
-#save-btn:disabled, #merge-selection-btn:disabled { opacity: 0.4; cursor: default; }
-#save-btn:not(:disabled):hover, #merge-selection-btn:not(:disabled):hover { background: #533483; }
+#editor-toolbar button:disabled { opacity: 0.35; cursor: default; }
+#editor-toolbar button:not(:disabled):hover { background: #505050; }
 
-#merge-selection-btn {
-  padding: 4px 12px;
-  background: #0f3460;
-  color: #e0e0e0;
-  border: 1px solid #533483;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-}
+#current-file { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e8e8e8; }
 
 #editor {
   flex: 1;
@@ -132,21 +163,26 @@ body {
 
 #editor .CodeMirror {
   height: 100%;
-  background: #1a1a2e;
-  color: #e0e0e0;
+  background: #1e1e1e;
+  color: #d4d4d4;
   font-size: 14px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, monospace;
 }
 
 #editor .CodeMirror-gutters {
-  background: #16213e;
-  border-right: 1px solid #0f3460;
+  background: #1e1e1e;
+  border-right: 1px solid #3c3c3c;
 }
 
+#editor .CodeMirror-linenumber { color: #858585; }
+#editor .CodeMirror-cursor { border-left-color: #d4d4d4; }
+#editor .CodeMirror-selected { background: #264f78; }
+
 #context-panel {
-  width: 320px;
-  border-left: 1px solid #0f3460;
+  width: 340px;
+  border-left: 1px solid #3c3c3c;
   overflow-y: auto;
-  background: #16213e;
+  background: #252526;
   font-size: 13px;
 }
 
@@ -155,46 +191,51 @@ body {
 }
 
 .placeholder {
-  color: #666;
+  color: #888;
   font-style: italic;
   text-align: center;
   padding: 24px;
 }
 
 .ngram-highlight {
-  background: rgba(233, 69, 96, 0.25);
-  border-radius: 2px;
+  background: rgba(255, 200, 50, 0.18);
+  border-bottom: 1px solid rgba(255, 200, 50, 0.5);
   cursor: pointer;
 }
 
 .ngram-highlight-strong {
-  background: rgba(233, 69, 96, 0.5);
+  background: rgba(255, 140, 50, 0.25);
+  border-bottom: 1px solid rgba(255, 140, 50, 0.6);
 }
 
 .ngram-highlight-max {
-  background: rgba(233, 69, 96, 0.75);
+  background: rgba(244, 135, 113, 0.35);
+  border-bottom: 1px solid rgba(244, 135, 113, 0.7);
 }
 
 .occurrence {
   padding: 8px;
   margin-bottom: 8px;
-  background: #1a1a2e;
+  background: #1e1e1e;
   border-radius: 4px;
-  border: 1px solid #0f3460;
+  border: 1px solid #3c3c3c;
 }
 
 .occurrence-file {
   font-weight: bold;
-  color: #533483;
+  color: #569cd6;
   margin-bottom: 4px;
 }
 
 .occurrence-context {
-  font-family: monospace;
+  font-family: 'SF Mono', Menlo, monospace;
   font-size: 12px;
   white-space: pre-wrap;
-  color: #aaa;
+  color: #9cdcfe;
   margin-bottom: 8px;
+  padding: 4px;
+  background: #2d2d2d;
+  border-radius: 3px;
 }
 
 .occurrence-actions {
@@ -206,44 +247,46 @@ body {
 .occurrence-actions button {
   padding: 3px 8px;
   font-size: 11px;
-  background: #0f3460;
-  color: #e0e0e0;
-  border: 1px solid #533483;
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border: 1px solid #555;
   border-radius: 3px;
   cursor: pointer;
 }
 
-.occurrence-actions button:hover { background: #533483; }
+.occurrence-actions button:hover { background: #505050; }
 
 .overlap-summary {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   padding: 8px;
-  background: #1a1a2e;
+  background: #1e1e1e;
   border-radius: 4px;
-  border: 1px solid #0f3460;
+  border: 1px solid #3c3c3c;
 }
 
-.overlap-summary h4 { margin-bottom: 4px; color: #e94560; }
+.overlap-summary h4 { margin-bottom: 4px; color: #f48771; font-size: 13px; }
+
+h3 { color: #e8e8e8; margin-bottom: 8px; font-size: 14px; }
 
 .diff-preview {
-  background: #1a1a2e;
+  background: #1e1e1e;
   padding: 12px;
   border-radius: 4px;
   margin: 8px 0;
-  font-family: monospace;
+  font-family: 'SF Mono', Menlo, monospace;
   font-size: 12px;
   white-space: pre-wrap;
   max-height: 300px;
   overflow-y: auto;
 }
 
-.diff-removed { color: #e94560; }
-.diff-added { color: #4ecca3; }
+.diff-removed { color: #f48771; }
+.diff-added { color: #89d185; }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0,0,0,0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -251,8 +294,8 @@ body {
 }
 
 .modal {
-  background: #16213e;
-  border: 1px solid #0f3460;
+  background: #252526;
+  border: 1px solid #3c3c3c;
   border-radius: 8px;
   padding: 20px;
   max-width: 600px;
@@ -263,6 +306,8 @@ body {
 
 .modal h3 { margin-bottom: 12px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-.modal-actions button { padding: 6px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #533483; }
-.btn-confirm { background: #4ecca3; color: #1a1a2e; }
-.btn-cancel { background: #0f3460; color: #e0e0e0; }
+.modal-actions button { padding: 6px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #555; }
+.btn-confirm { background: #89d185; color: #1e1e1e; font-weight: 600; }
+.btn-confirm:hover { background: #73c06b; }
+.btn-cancel { background: #3c3c3c; color: #d4d4d4; }
+.btn-cancel:hover { background: #505050; }

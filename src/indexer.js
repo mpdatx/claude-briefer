@@ -34,6 +34,10 @@ export class Indexer {
 
       const stemmed = words.map(w => PorterStemmer.stem(w));
       const segNgrams = this._generateNgrams(words, stemmed, seg.tag, seg.line, seg.text);
+      // Store segment text on each n-gram for span reconstruction
+      for (const ng of segNgrams) {
+        ng.segmentText = seg.text;
+      }
       ngrams.push(...segNgrams);
 
       for (const ng of segNgrams) {
@@ -130,34 +134,34 @@ export class Indexer {
   }
 
   getMergedSpans(filePath) {
-    const shared = this.getSharedNgrams(filePath);
-    if (shared.length === 0) return [];
-
-    // Get the actual ngram entries for this file to get offsets
-    const fileNgramMap = new Map();
-    for (const ng of (this.fileNgrams.get(filePath) || [])) {
-      if (!fileNgramMap.has(ng.stemmed)) {
-        fileNgramMap.set(ng.stemmed, ng);
-      }
+    const sharedKeys = new Set();
+    for (const ng of this.getSharedNgrams(filePath)) {
+      sharedKeys.add(ng.stemmed);
     }
+    if (sharedKeys.size === 0) return [];
 
+    // Collect ALL occurrences of shared n-grams in this file (not deduplicated)
+    const allNgrams = this.fileNgrams.get(filePath) || [];
     const spans = [];
-    for (const ng of shared) {
-      const entry = fileNgramMap.get(ng.stemmed);
-      if (!entry) continue;
+    for (const ng of allNgrams) {
+      if (!sharedKeys.has(ng.stemmed)) continue;
+      const locs = this.index.get(ng.stemmed) || [];
       spans.push({
-        startOffset: entry.startOffset,
-        endOffset: entry.endOffset,
-        line: entry.line,
-        tag: entry.tag,
-        original: entry.original,
+        startOffset: ng.startOffset,
+        endOffset: ng.endOffset,
+        line: ng.line,
+        tag: ng.tag,
+        original: ng.original,
+        segmentText: ng.segmentText,
+        count: locs.length,
+        stemmed: ng.stemmed,
       });
     }
 
-    // Sort by startOffset
-    spans.sort((a, b) => a.startOffset - b.startOffset);
+    // Sort by line first, then startOffset
+    spans.sort((a, b) => a.line - b.line || a.startOffset - b.startOffset);
 
-    // Merge overlapping spans
+    // Merge overlapping spans within the same segment (same line)
     const merged = [];
     for (const span of spans) {
       if (merged.length === 0) {
@@ -165,18 +169,33 @@ export class Indexer {
         continue;
       }
       const last = merged[merged.length - 1];
-      if (span.startOffset < last.endOffset) {
-        // Overlapping — extend
+      if (last.line === span.line && span.startOffset <= last.endOffset) {
+        // Overlapping within same segment — extend
         if (span.endOffset > last.endOffset) {
           last.endOffset = span.endOffset;
-          last.original = last.original; // keep first original for display
+          last.count = Math.max(last.count, span.count);
         }
       } else {
         merged.push({ ...span });
       }
     }
 
-    return merged;
+    // Rebuild original text from segment text using offsets
+    for (const span of merged) {
+      if (span.segmentText) {
+        span.original = span.segmentText.slice(span.startOffset, span.endOffset);
+      }
+    }
+
+    return merged.map(s => ({
+      startOffset: s.startOffset,
+      endOffset: s.endOffset,
+      line: s.line,
+      tag: s.tag,
+      original: s.original,
+      count: s.count,
+      stemmed: s.stemmed,
+    }));
   }
 
   getRedundancyReport() {
