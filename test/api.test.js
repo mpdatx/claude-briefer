@@ -100,4 +100,41 @@ describe('API', () => {
       }
     });
   });
+
+  describe('Merge workflow integration', () => {
+    it('preview then apply delete removes content', async () => {
+      const { mkdirSync, writeFileSync, rmSync } = await import('fs');
+      const tmpDir = join(import.meta.dirname, 'fixtures', 'tmp-merge');
+      mkdirSync(tmpDir, { recursive: true });
+      writeFileSync(join(tmpDir, 'a.md'), '# A\n\nShared phrase one two three.\n\nOnly in A.');
+      writeFileSync(join(tmpDir, 'b.md'), '# B\n\nShared phrase one two three.\n\nOnly in B.');
+
+      try {
+        const tmpApp = await createApp({
+          dir: tmpDir, glob: '**/*.md', port: 0, ngramMin: 3, ngramMax: 8,
+        });
+
+        // Preview
+        const previewRes = await request(tmpApp)
+          .post('/api/merge/delete')
+          .send({ content: 'Shared phrase one two three.', files: ['a.md'], apply: false });
+        assert.equal(previewRes.status, 200);
+        assert.ok(previewRes.body.preview['a.md'].before.includes('Shared phrase'));
+        assert.ok(!previewRes.body.preview['a.md'].after.includes('Shared phrase'));
+
+        // Apply
+        const applyRes = await request(tmpApp)
+          .post('/api/merge/delete')
+          .send({ content: 'Shared phrase one two three.', files: ['a.md'], apply: true });
+        assert.equal(applyRes.status, 200);
+
+        // Verify file was updated
+        const fileRes = await request(tmpApp).get('/api/files/a.md');
+        assert.ok(!fileRes.body.content.includes('Shared phrase'));
+        assert.ok(fileRes.body.content.includes('Only in A'));
+      } finally {
+        rmSync(tmpDir, { recursive: true });
+      }
+    });
+  });
 });
