@@ -1,5 +1,5 @@
-import { initEditor, setContent, getContent, applyHighlights } from './editor.js';
-import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, showDiffModal } from './panels.js';
+import { initEditor, setContent, getContent, getSelection, applyHighlights } from './editor.js';
+import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, renderSelectionActions, renderSections, renderSectionActions, showDiffModal } from './panels.js';
 
 let state = {
   files: [],
@@ -19,6 +19,9 @@ const editor = initEditor(document.getElementById('editor'), {
   },
   onNgramClicked: (stemmedNgram) => {
     loadNgramOccurrences(stemmedNgram);
+  },
+  onSelectionChange: (sel) => {
+    document.getElementById('merge-selection-btn').disabled = !sel;
   },
 });
 
@@ -74,6 +77,17 @@ async function loadNgrams(filePath) {
   applyHighlights(filteredSpans, { maxCount });
 
   renderRedundancyOverview(state.ngrams, filePath);
+
+  // Append sections to the context panel
+  const content = getContent();
+  const sectionsHtml = renderSections(content, filePath, { onMergeSection: handleMergeSection });
+  if (sectionsHtml) {
+    document.getElementById('context-content').innerHTML += sectionsHtml;
+    // Attach section merge handlers
+    document.querySelectorAll('[data-action="merge-section"]').forEach(btn => {
+      btn.onclick = () => handleMergeSection(parseInt(btn.dataset.line, 10));
+    });
+  }
 }
 
 async function loadNgramOccurrences(stemmedNgram) {
@@ -161,6 +175,105 @@ async function handleConsolidate(file, locations) {
   });
 }
 
+// --- Selection merge ---
+
+function handleSelectionMerge() {
+  const sel = getSelection();
+  if (!sel || !state.activeFile) return;
+  const allFiles = state.files.map(f => f.path);
+  renderSelectionActions(sel, state.activeFile, allFiles, {
+    onKeepOne: handleContentKeepOne,
+    onDelete: handleContentDelete,
+    onConsolidate: handleContentConsolidate,
+  });
+}
+
+// --- Section merge ---
+
+function handleMergeSection(lineIndex) {
+  const content = getContent();
+  const lines = content.split('\n');
+  const headingMatch = lines[lineIndex].match(/^(#{1,6})\s+(.+)/);
+  if (!headingMatch) return;
+
+  const level = headingMatch[1].length;
+  const title = headingMatch[2];
+
+  // Extract section content: from heading to next heading of equal/higher level
+  let endLine = lines.length;
+  for (let i = lineIndex + 1; i < lines.length; i++) {
+    const nextMatch = lines[i].match(/^(#{1,6})\s+/);
+    if (nextMatch && nextMatch[1].length <= level) {
+      endLine = i;
+      break;
+    }
+  }
+
+  const sectionContent = lines.slice(lineIndex, endLine).join('\n').trim();
+  const allFiles = state.files.map(f => f.path);
+
+  renderSectionActions(title, sectionContent, state.activeFile, allFiles, {
+    onKeepOne: handleContentKeepOne,
+    onDelete: handleContentDelete,
+    onConsolidate: handleContentConsolidate,
+  });
+}
+
+// --- Generic content merge handlers (shared by selection + section) ---
+
+async function handleContentKeepOne(keepFile, content, removeFiles) {
+  const data = await api('/merge/keep-one', {
+    method: 'POST',
+    body: { content, keepFile, removeFiles, apply: false },
+  });
+  showDiffModal(data.preview, {
+    onConfirm: async () => {
+      await api('/merge/keep-one', {
+        method: 'POST',
+        body: { content, keepFile, removeFiles, apply: true },
+      });
+      await refresh();
+    },
+  });
+}
+
+async function handleContentDelete(file, content) {
+  const data = await api('/merge/delete', {
+    method: 'POST',
+    body: { content, files: [file], apply: false },
+  });
+  showDiffModal(data.preview, {
+    onConfirm: async () => {
+      await api('/merge/delete', {
+        method: 'POST',
+        body: { content, files: [file], apply: true },
+      });
+      await refresh();
+    },
+  });
+}
+
+async function handleContentConsolidate(file, content, allFiles) {
+  const targetFile = prompt('Consolidate to which file?', 'shared.md');
+  if (!targetFile) return;
+  const sectionName = prompt('Section name?', 'Shared');
+  if (!sectionName) return;
+
+  const data = await api('/merge/consolidate', {
+    method: 'POST',
+    body: { content, sectionName, sourceFiles: [file], targetFile, apply: false },
+  });
+  showDiffModal(data.preview, {
+    onConfirm: async () => {
+      await api('/merge/consolidate', {
+        method: 'POST',
+        body: { content, sectionName, sourceFiles: [file], targetFile, apply: true },
+      });
+      await refresh();
+    },
+  });
+}
+
 async function save() {
   if (!state.activeFile) return;
   await api(`/files/${state.activeFile}`, {
@@ -185,6 +298,7 @@ async function refresh() {
 }
 
 document.getElementById('save-btn').onclick = save;
+document.getElementById('merge-selection-btn').onclick = handleSelectionMerge;
 
 document.getElementById('file-search').oninput = (e) => {
   state.fileFilter = e.target.value;

@@ -3,7 +3,7 @@ let highlights = [];
 let onNgramClick = null;
 let suppressChange = false;
 
-export function initEditor(container, { onContentChange, onNgramClicked }) {
+export function initEditor(container, { onContentChange, onNgramClicked, onSelectionChange }) {
   onNgramClick = onNgramClicked;
   cm = CodeMirror(container, {
     mode: 'markdown',
@@ -16,7 +16,18 @@ export function initEditor(container, { onContentChange, onNgramClicked }) {
     if (!suppressChange && onContentChange) onContentChange(cm.getValue());
   });
 
+  cm.on('cursorActivity', () => {
+    if (onSelectionChange) {
+      const sel = cm.getSelection();
+      onSelectionChange(sel);
+    }
+  });
+
   return cm;
+}
+
+export function getSelection() {
+  return cm.getSelection();
 }
 
 export function setContent(text) {

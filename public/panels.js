@@ -98,6 +98,98 @@ export function renderNgramOccurrences(ngram, locations, currentFile, { onKeepOn
   });
 }
 
+export function renderSelectionActions(selectedText, currentFile, allFiles, { onKeepOne, onDelete, onConsolidate }) {
+  const container = document.getElementById('context-content');
+
+  const truncated = selectedText.length > 80
+    ? selectedText.slice(0, 80) + '...'
+    : selectedText;
+
+  let html = `<h3>Selection</h3>
+    <p style="margin-bottom:8px;color:#888;font-size:12px">"${escapeHtml(truncated)}"</p>
+    <p style="margin-bottom:12px;font-size:12px">${selectedText.length} characters selected</p>
+    <div class="occurrence">
+      <div class="occurrence-file">${currentFile} (current)</div>
+      <div class="occurrence-actions">
+        <button data-action="keep">Keep here, remove from others</button>
+        <button data-action="delete">Delete this selection</button>
+        <button data-action="consolidate">Consolidate to file...</button>
+      </div>
+    </div>`;
+
+  container.innerHTML = html;
+
+  container.querySelector('[data-action="keep"]').onclick = () => {
+    const others = allFiles.filter(f => f !== currentFile);
+    onKeepOne(currentFile, selectedText, others);
+  };
+  container.querySelector('[data-action="delete"]').onclick = () => {
+    onDelete(currentFile, selectedText);
+  };
+  container.querySelector('[data-action="consolidate"]').onclick = () => {
+    onConsolidate(currentFile, selectedText, allFiles);
+  };
+}
+
+export function renderSections(content, currentFile, { onMergeSection }) {
+  const lines = content.split('\n');
+  const sections = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(/^(#{1,6})\s+(.+)/);
+    if (match) {
+      sections.push({ level: match[1].length, title: match[2], line: i });
+    }
+  }
+
+  if (sections.length === 0) return '';
+
+  let html = '<h3 style="margin-top:16px">Sections</h3>';
+  for (const sec of sections) {
+    const indent = (sec.level - 1) * 12;
+    html += `
+      <div class="overlap-summary" style="margin-left:${indent}px;cursor:pointer" data-section-line="${sec.line}">
+        <h4 style="font-size:12px">${'#'.repeat(sec.level)} ${escapeHtml(sec.title)}</h4>
+        <div class="occurrence-actions">
+          <button data-action="merge-section" data-line="${sec.line}">Merge section...</button>
+        </div>
+      </div>`;
+  }
+
+  return html;
+}
+
+export function renderSectionActions(sectionTitle, sectionContent, currentFile, allFiles, { onKeepOne, onDelete, onConsolidate }) {
+  const container = document.getElementById('context-content');
+
+  const truncated = sectionContent.length > 200
+    ? sectionContent.slice(0, 200) + '...'
+    : sectionContent;
+
+  let html = `<h3>Section: ${escapeHtml(sectionTitle)}</h3>
+    <div class="occurrence-context" style="margin-bottom:12px">${escapeHtml(truncated)}</div>
+    <div class="occurrence">
+      <div class="occurrence-actions">
+        <button data-action="keep">Keep here, remove from others</button>
+        <button data-action="delete">Delete this section</button>
+        <button data-action="consolidate">Consolidate to file...</button>
+      </div>
+    </div>`;
+
+  container.innerHTML = html;
+
+  container.querySelector('[data-action="keep"]').onclick = () => {
+    const others = allFiles.filter(f => f !== currentFile);
+    onKeepOne(currentFile, sectionContent, others);
+  };
+  container.querySelector('[data-action="delete"]').onclick = () => {
+    onDelete(currentFile, sectionContent);
+  };
+  container.querySelector('[data-action="consolidate"]').onclick = () => {
+    onConsolidate(currentFile, sectionContent, allFiles);
+  };
+}
+
 export function showDiffModal(preview, { onConfirm, onCancel }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';

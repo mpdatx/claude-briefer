@@ -112,8 +112,18 @@ body {
   font-size: 12px;
 }
 
-#save-btn:disabled { opacity: 0.4; cursor: default; }
-#save-btn:not(:disabled):hover { background: #533483; }
+#save-btn:disabled, #merge-selection-btn:disabled { opacity: 0.4; cursor: default; }
+#save-btn:not(:disabled):hover, #merge-selection-btn:not(:disabled):hover { background: #533483; }
+
+#merge-selection-btn {
+  padding: 4px 12px;
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #533483;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
 
 #editor {
   flex: 1;
