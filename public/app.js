@@ -53,6 +53,19 @@ function reRenderFileList() {
 }
 
 async function selectFile(filePath) {
+  // Click active file again to deselect → return to global view
+  if (filePath === state.activeFile && !state.dirty) {
+    state.activeFile = null;
+    state.pairwiseScores = null;
+    document.getElementById('current-file').textContent = '';
+    document.getElementById('save-btn').disabled = true;
+    hideCompare();
+    reRenderFileList();
+    document.getElementById('context-content').innerHTML =
+      '<p class="placeholder">Select a file to view redundancy info.</p>';
+    return;
+  }
+
   if (state.dirty && state.activeFile) {
     if (!confirm('You have unsaved changes. Discard?')) return;
   }
