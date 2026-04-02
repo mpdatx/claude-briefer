@@ -1,6 +1,7 @@
 let cm = null;
 let highlights = [];
 let onNgramClick = null;
+let suppressChange = false;
 
 export function initEditor(container, { onContentChange, onNgramClicked }) {
   onNgramClick = onNgramClicked;
@@ -12,14 +13,16 @@ export function initEditor(container, { onContentChange, onNgramClicked }) {
   });
 
   cm.on('change', () => {
-    if (onContentChange) onContentChange(cm.getValue());
+    if (!suppressChange && onContentChange) onContentChange(cm.getValue());
   });
 
   return cm;
 }
 
 export function setContent(text) {
+  suppressChange = true;
   cm.setValue(text);
+  suppressChange = false;
   clearHighlights();
 }
 
