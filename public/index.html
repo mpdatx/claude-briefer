@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Briefer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="topbar">
+    <span id="dir-info"></span>
+    <div id="controls">
+      <label>
+        Highlight:
+        <select id="tag-filter">
+          <option value="both">Both</option>
+          <option value="prose">Prose only</option>
+          <option value="code">Code only</option>
+        </select>
+      </label>
+      <label>
+        Min occurrences:
+        <input type="range" id="min-occurrences" min="2" max="10" value="2">
+        <span id="min-occ-value">2</span>
+      </label>
+    </div>
+  </header>
+  <main id="panels">
+    <aside id="file-list">
+      <input type="text" id="file-search" placeholder="Filter files...">
+      <ul id="files"></ul>
+    </aside>
+    <section id="editor-panel">
+      <div id="editor-toolbar">
+        <span id="current-file"></span>
+        <button id="save-btn" disabled>Save to disk</button>
+      </div>
+      <div id="editor"></div>
+    </section>
+    <aside id="context-panel">
+      <div id="context-content">
+        <p class="placeholder">Select a file to view redundancy info.</p>
+      </div>
+    </aside>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/markdown/markdown.min.js"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
