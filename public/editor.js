@@ -125,3 +125,76 @@ function posFromOffset(lines, startLine, offset) {
 function posFromOffsetEnd(lines, startLine, offset) {
   return posFromOffset(lines, startLine, offset);
 }
+
+// --- Comparison editor ---
+
+let compareCm = null;
+let compareHighlights = [];
+
+export function showCompare(content, filePath, matchText) {
+  const panel = document.getElementById('compare-panel');
+  const container = document.getElementById('compare-editor');
+  document.getElementById('compare-file').textContent = filePath;
+  panel.style.display = '';
+
+  if (!compareCm) {
+    compareCm = CodeMirror(container, {
+      mode: 'markdown',
+      lineNumbers: true,
+      lineWrapping: true,
+      readOnly: true,
+      theme: 'default',
+    });
+  }
+
+  compareCm.setValue(content);
+
+  // Clear old highlights
+  for (const m of compareHighlights) m.clear();
+  compareHighlights = [];
+
+  // Highlight the match text and scroll to it
+  if (matchText) {
+    const lines = content.split('\n');
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      const charIdx = lines[lineIdx].indexOf(matchText);
+      if (charIdx !== -1) {
+        const from = { line: lineIdx, ch: charIdx };
+        const to = { line: lineIdx, ch: charIdx + matchText.length };
+        const mark = compareCm.markText(from, to, { className: 'compare-highlight' });
+        compareHighlights.push(mark);
+        compareCm.scrollIntoView(from, 100);
+        break;
+      }
+      // Try multiline
+      const joined = lines.slice(lineIdx, lineIdx + 10).join('\n');
+      const multiIdx = joined.indexOf(matchText);
+      if (multiIdx !== -1) {
+        const from = posFromOffset(lines, lineIdx, multiIdx);
+        const to = posFromOffset(lines, lineIdx, multiIdx + matchText.length);
+        const mark = compareCm.markText(from, to, { className: 'compare-highlight' });
+        compareHighlights.push(mark);
+        compareCm.scrollIntoView(from, 100);
+        break;
+      }
+    }
+  }
+
+  // Also scroll the main editor to the match
+  if (matchText) {
+    const mainLines = cm.getValue().split('\n');
+    for (let i = 0; i < mainLines.length; i++) {
+      const idx = mainLines[i].indexOf(matchText);
+      if (idx !== -1) {
+        cm.scrollIntoView({ line: i, ch: idx }, 100);
+        break;
+      }
+    }
+  }
+}
+
+export function hideCompare() {
+  document.getElementById('compare-panel').style.display = 'none';
+  for (const m of compareHighlights) m.clear();
+  compareHighlights = [];
+}

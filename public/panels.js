@@ -150,7 +150,7 @@ export function renderRedundancyOverview(ngrams, filePath) {
   container.innerHTML = html;
 }
 
-export function renderNgramOccurrences(ngram, locations, currentFile, { onKeepOne, onDelete, onConsolidate }) {
+export function renderNgramOccurrences(ngram, locations, currentFile, { onKeepOne, onDelete, onConsolidate, onCompare }) {
   const container = document.getElementById('context-content');
 
   let html = `<h3>N-gram occurrences</h3><p style="margin-bottom:12px;color:#888;font-size:12px">"${ngram}"</p>`;
@@ -159,12 +159,13 @@ export function renderNgramOccurrences(ngram, locations, currentFile, { onKeepOn
     const isCurrent = loc.file === currentFile;
     html += `
       <div class="occurrence">
-        <div class="occurrence-file">${loc.file}${isCurrent ? ' (current)' : ''}</div>
+        <div class="occurrence-file">${escapeHtml(loc.file)}${isCurrent ? ' (current)' : ''}</div>
         <div class="occurrence-context">${escapeHtml(loc.original || '')}</div>
         <div class="occurrence-actions">
-          <button data-action="keep" data-file="${loc.file}">Keep here, remove others</button>
-          <button data-action="delete" data-file="${loc.file}">Delete this one</button>
-          <button data-action="consolidate" data-file="${loc.file}">Consolidate to file...</button>
+          ${!isCurrent ? `<button data-action="compare" data-file="${escapeHtml(loc.file)}" data-original="${escapeHtml(loc.original || '')}">Compare</button>` : ''}
+          <button data-action="keep" data-file="${escapeHtml(loc.file)}">Keep here, remove others</button>
+          <button data-action="delete" data-file="${escapeHtml(loc.file)}">Delete this one</button>
+          <button data-action="consolidate" data-file="${escapeHtml(loc.file)}">Consolidate to file...</button>
         </div>
       </div>`;
   }
@@ -175,7 +176,8 @@ export function renderNgramOccurrences(ngram, locations, currentFile, { onKeepOn
     btn.onclick = () => {
       const action = btn.dataset.action;
       const file = btn.dataset.file;
-      if (action === 'keep') onKeepOne(file, locations);
+      if (action === 'compare' && onCompare) onCompare(file, btn.dataset.original);
+      else if (action === 'keep') onKeepOne(file, locations);
       else if (action === 'delete') onDelete(file);
       else if (action === 'consolidate') onConsolidate(file, locations);
     };

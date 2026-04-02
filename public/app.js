@@ -1,4 +1,4 @@
-import { initEditor, setContent, getContent, getSelection, applyHighlights } from './editor.js';
+import { initEditor, setContent, getContent, getSelection, applyHighlights, showCompare, hideCompare } from './editor.js';
 import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, renderSelectionActions, renderSections, renderSectionActions, showDiffModal } from './panels.js';
 
 let state = {
@@ -61,6 +61,7 @@ async function selectFile(filePath) {
   state.dirty = false;
   document.getElementById('save-btn').disabled = true;
   document.getElementById('current-file').textContent = filePath;
+  hideCompare();
 
   // Fetch pairwise scores for the selected file
   const pairwise = await api(`/redundancy?file=${encodeURIComponent(filePath)}`);
@@ -102,11 +103,29 @@ async function loadNgrams(filePath) {
 
 async function loadNgramOccurrences(stemmedNgram) {
   const data = await api(`/ngrams/${state.activeFile}?ngram=${encodeURIComponent(stemmedNgram)}`);
+  const otherLocs = data.locations.filter(l => l.file !== state.activeFile);
+
+  // Auto-open comparison if there's exactly one other file
+  if (otherLocs.length === 1) {
+    openComparison(otherLocs[0].file, otherLocs[0].original);
+  } else if (otherLocs.length > 1) {
+    // Show first match, user can switch via right panel
+    openComparison(otherLocs[0].file, otherLocs[0].original);
+  } else {
+    hideCompare();
+  }
+
   renderNgramOccurrences(stemmedNgram, data.locations, state.activeFile, {
     onKeepOne: handleKeepOne,
     onDelete: handleDelete,
     onConsolidate: handleConsolidate,
+    onCompare: (file, original) => openComparison(file, original),
   });
+}
+
+async function openComparison(filePath, matchText) {
+  const fileData = await api(`/files/${filePath}`);
+  showCompare(fileData.content, filePath, matchText);
 }
 
 function filterSpans(spans) {
@@ -309,6 +328,7 @@ async function refresh() {
 
 document.getElementById('save-btn').onclick = save;
 document.getElementById('merge-selection-btn').onclick = handleSelectionMerge;
+document.getElementById('close-compare-btn').onclick = hideCompare;
 
 document.getElementById('file-search').oninput = (e) => {
   state.fileFilter = e.target.value;
