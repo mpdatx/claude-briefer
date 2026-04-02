@@ -198,6 +198,25 @@ export class Indexer {
     }));
   }
 
+  getPairwiseScores(filePath) {
+    const shared = this.getSharedNgrams(filePath);
+    const scores = {};
+
+    for (const ng of shared) {
+      const ngramLen = ng.stemmed.split(' ').length;
+      for (const loc of ng.locations) {
+        if (loc.file === filePath) continue;
+        if (!scores[loc.file]) scores[loc.file] = { sharedNgrams: 0, score: 0 };
+        scores[loc.file].sharedNgrams++;
+        scores[loc.file].score += ngramLen * ngramLen;
+      }
+    }
+
+    return Object.entries(scores)
+      .map(([file, data]) => ({ file, ...data }))
+      .sort((a, b) => b.score - a.score);
+  }
+
   getRedundancyReport() {
     const report = [];
 

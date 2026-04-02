@@ -10,6 +10,7 @@ let state = {
   ngrams: [],
   spans: [],
   dirty: false,
+  pairwiseScores: null, // {file: score} when a file is selected
 };
 
 const editor = initEditor(document.getElementById('editor'), {
@@ -36,12 +37,18 @@ async function api(path, opts = {}) {
 
 async function loadFiles() {
   state.files = await api('/files');
+  state.pairwiseScores = null;
   document.getElementById('dir-info').textContent =
     `${state.files.length} file(s)`;
+  reRenderFileList();
+}
+
+function reRenderFileList() {
   renderFileList(state.files, {
     onSelect: selectFile,
     activeFile: state.activeFile,
     filter: state.fileFilter,
+    pairwiseScores: state.pairwiseScores,
   });
 }
 
@@ -55,11 +62,14 @@ async function selectFile(filePath) {
   document.getElementById('save-btn').disabled = true;
   document.getElementById('current-file').textContent = filePath;
 
-  renderFileList(state.files, {
-    onSelect: selectFile,
-    activeFile: state.activeFile,
-    filter: state.fileFilter,
-  });
+  // Fetch pairwise scores for the selected file
+  const pairwise = await api(`/redundancy?file=${encodeURIComponent(filePath)}`);
+  state.pairwiseScores = {};
+  for (const entry of pairwise) {
+    state.pairwiseScores[entry.file] = entry;
+  }
+
+  reRenderFileList();
 
   const fileData = await api(`/files/${filePath}`);
   setContent(fileData.content);
@@ -302,11 +312,7 @@ document.getElementById('merge-selection-btn').onclick = handleSelectionMerge;
 
 document.getElementById('file-search').oninput = (e) => {
   state.fileFilter = e.target.value;
-  renderFileList(state.files, {
-    onSelect: selectFile,
-    activeFile: state.activeFile,
-    filter: state.fileFilter,
-  });
+  reRenderFileList();
 };
 
 document.getElementById('tag-filter').onchange = (e) => {

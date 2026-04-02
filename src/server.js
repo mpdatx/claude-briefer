@@ -84,6 +84,9 @@ export async function createApp(opts) {
 
 
   app.get('/api/redundancy', (req, res) => {
+    if (req.query.file) {
+      return res.json(indexer.getPairwiseScores(req.query.file));
+    }
     res.json(indexer.getRedundancyReport());
   });
 

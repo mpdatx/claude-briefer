@@ -1,11 +1,19 @@
-export function renderFileList(files, { onSelect, activeFile, filter }) {
-  const ul = document.getElementById('files');
-  ul.innerHTML = '';
+export function renderFileList(files, { onSelect, activeFile, filter, pairwiseScores }) {
+  const container = document.getElementById('files');
+  container.innerHTML = '';
 
-  const maxScore = Math.max(...files.map(f => f.redundancyScore), 0.01);
+  const maxGlobalScore = Math.max(...files.map(f => f.redundancyScore), 0.01);
   const filtered = filter
     ? files.filter(f => f.path.toLowerCase().includes(filter.toLowerCase()))
     : files;
+
+  // When a file is selected, compute max pairwise score for bar scaling
+  let maxPairwise = 0;
+  if (pairwiseScores) {
+    for (const entry of Object.values(pairwiseScores)) {
+      if (entry.score > maxPairwise) maxPairwise = entry.score;
+    }
+  }
 
   // Build tree structure
   const tree = {};
@@ -19,7 +27,9 @@ export function renderFileList(files, { onSelect, activeFile, filter }) {
     node[parts[parts.length - 1]] = file;
   }
 
-  renderTreeNode(ul, tree, '', { onSelect, activeFile, maxScore, depth: 0 });
+  renderTreeNode(container, tree, '', {
+    onSelect, activeFile, maxGlobalScore, pairwiseScores, maxPairwise, depth: 0,
+  });
 }
 
 function renderTreeNode(container, node, prefix, opts) {
@@ -71,13 +81,31 @@ function renderTreeNode(container, node, prefix, opts) {
     nameSpan.style.textOverflow = 'ellipsis';
     nameSpan.style.whiteSpace = 'nowrap';
 
+    // Bar + tooltip: pairwise when a file is selected, global otherwise
     const bar = document.createElement('div');
     bar.className = 'redundancy-bar';
     const fill = document.createElement('div');
     fill.className = 'redundancy-bar-fill';
-    fill.style.width = `${Math.min(100, (file.redundancyScore / opts.maxScore) * 100)}%`;
-    bar.appendChild(fill);
 
+    const pw = opts.pairwiseScores && opts.pairwiseScores[file.path];
+    if (opts.pairwiseScores && file.path !== opts.activeFile) {
+      // Show pairwise overlap with selected file
+      const score = pw ? pw.score : 0;
+      const maxPw = opts.maxPairwise || 1;
+      fill.style.width = `${Math.min(100, (score / maxPw) * 100)}%`;
+      fill.style.background = score > 0 ? '#dcdcaa' : '#3c3c3c';
+      fileEl.title = pw
+        ? `${pw.sharedNgrams} shared n-gram(s) with selected file`
+        : 'No shared content with selected file';
+    } else if (file.path === opts.activeFile) {
+      fill.style.width = '0%';
+      fileEl.title = 'Selected file';
+    } else {
+      fill.style.width = `${Math.min(100, (file.redundancyScore / opts.maxGlobalScore) * 100)}%`;
+      fileEl.title = `Redundancy score: ${file.redundancyScore.toFixed(1)}`;
+    }
+
+    bar.appendChild(fill);
     fileEl.appendChild(nameSpan);
     fileEl.appendChild(bar);
     container.appendChild(fileEl);
