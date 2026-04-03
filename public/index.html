@@ -8,21 +8,32 @@
 </head>
 <body>
   <header id="topbar">
-    <span id="dir-info"></span>
-    <div id="controls">
-      <label>
-        Highlight:
-        <select id="tag-filter">
-          <option value="both">Both</option>
-          <option value="prose">Prose only</option>
-          <option value="code">Code only</option>
-        </select>
-      </label>
-      <label>
-        Min occurrences:
-        <input type="range" id="min-occurrences" min="2" max="10" value="2">
-        <span id="min-occ-value">2</span>
-      </label>
+    <div id="topbar-main">
+      <span id="dir-info"></span>
+      <div id="controls">
+        <button id="edit-sources-btn" title="Edit scan paths">Paths...</button>
+        <label>
+          Highlight:
+          <select id="tag-filter">
+            <option value="both">Both</option>
+            <option value="prose">Prose only</option>
+            <option value="code">Code only</option>
+          </select>
+        </label>
+        <label>
+          Min occurrences:
+          <input type="range" id="min-occurrences" min="2" max="10" value="2">
+          <span id="min-occ-value">2</span>
+        </label>
+      </div>
+    </div>
+    <div id="sources-editor" style="display:none">
+      <div id="sources-list"></div>
+      <div id="sources-actions">
+        <button id="add-source-btn">+ Add path</button>
+        <button id="apply-sources-btn">Rescan</button>
+        <button id="cancel-sources-btn">Cancel</button>
+      </div>
     </div>
   </header>
   <main id="panels">

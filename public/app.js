@@ -384,4 +384,70 @@ document.getElementById('min-occurrences').oninput = (e) => {
   }
 };
 
+// --- Sources editor ---
+
+let cachedSources = [];
+
+async function loadConfig() {
+  const config = await api('/config');
+  cachedSources = config.sources || [];
+}
+
+function renderSourceRows() {
+  const container = document.getElementById('sources-list');
+  container.innerHTML = '';
+  for (let i = 0; i < cachedSources.length; i++) {
+    const s = cachedSources[i];
+    const row = document.createElement('div');
+    row.className = 'source-row';
+    row.innerHTML = `
+      <input class="source-dir" type="text" value="${s.dir}" placeholder="/path/to/dir">
+      <input class="source-pattern" type="text" value="${s.pattern}" placeholder="**/*.md">
+      <button class="remove-source" title="Remove">&times;</button>
+    `;
+    row.querySelector('.source-dir').oninput = (e) => { cachedSources[i].dir = e.target.value; };
+    row.querySelector('.source-pattern').oninput = (e) => { cachedSources[i].pattern = e.target.value; };
+    row.querySelector('.remove-source').onclick = () => {
+      if (cachedSources.length > 1) {
+        cachedSources.splice(i, 1);
+        renderSourceRows();
+      }
+    };
+    container.appendChild(row);
+  }
+}
+
+document.getElementById('edit-sources-btn').onclick = async () => {
+  await loadConfig();
+  renderSourceRows();
+  document.getElementById('sources-editor').style.display = '';
+};
+
+document.getElementById('cancel-sources-btn').onclick = () => {
+  document.getElementById('sources-editor').style.display = 'none';
+};
+
+document.getElementById('add-source-btn').onclick = () => {
+  cachedSources.push({ dir: '', pattern: '**/*.md' });
+  renderSourceRows();
+};
+
+document.getElementById('apply-sources-btn').onclick = async () => {
+  const valid = cachedSources.filter(s => s.dir.trim());
+  if (valid.length === 0) return;
+
+  const result = await api('/config', {
+    method: 'POST',
+    body: { sources: valid },
+  });
+
+  document.getElementById('sources-editor').style.display = 'none';
+  state.activeFile = null;
+  state.pairwiseScores = null;
+  hideCompare();
+  await loadFiles();
+  document.getElementById('context-content').innerHTML =
+    '<p class="placeholder">Select a file to view redundancy info.</p>';
+};
+
 loadFiles();

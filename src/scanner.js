@@ -1,36 +1,74 @@
 import { glob } from 'glob';
-import { readFileSync, writeFileSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, statSync, existsSync } from 'fs';
 import { join, relative } from 'path';
 import { watch } from 'chokidar';
 
 export class Scanner {
-  constructor(dir, pattern) {
-    this.dir = dir;
-    this.pattern = pattern;
+  constructor(sources) {
+    // sources: [{ dir, pattern }] or legacy (dir, pattern)
+    if (typeof sources === 'string') {
+      // Legacy constructor: new Scanner(dir, pattern)
+      this.sources = [{ dir: sources, pattern: arguments[1] || '**/*.md' }];
+    } else {
+      this.sources = sources;
+    }
     this.files = new Map();
-    this.watcher = null;
+    this.watchers = [];
     this.onChange = null;
   }
 
   async scan() {
-    const matches = await glob(this.pattern, { cwd: this.dir, nodir: true });
     this.files.clear();
 
-    for (const relPath of matches) {
-      this._loadFile(relPath);
+    for (const { dir, pattern } of this.sources) {
+      if (!existsSync(dir)) continue;
+      const matches = await glob(pattern, { cwd: dir, nodir: true });
+      for (const relPath of matches) {
+        // Prefix with source dir name if multiple sources
+        const key = this.sources.length > 1
+          ? join(relative(this._commonRoot(), dir), relPath)
+          : relPath;
+        this._loadFile(dir, relPath, key);
+      }
     }
   }
 
-  _loadFile(relPath) {
-    const absPath = join(this.dir, relPath);
+  _commonRoot() {
+    if (this.sources.length === 1) return this.sources[0].dir;
+    // Find common parent of all source dirs
+    const parts = this.sources.map(s => s.dir.split('/'));
+    const common = [];
+    for (let i = 0; i < parts[0].length; i++) {
+      if (parts.every(p => p[i] === parts[0][i])) {
+        common.push(parts[0][i]);
+      } else break;
+    }
+    return common.join('/') || '/';
+  }
+
+  _loadFile(dir, relPath, key) {
+    const absPath = join(dir, relPath);
     const content = readFileSync(absPath, 'utf-8');
     const stat = statSync(absPath);
-    this.files.set(relPath, {
-      relativePath: relPath,
+    this.files.set(key || relPath, {
+      relativePath: key || relPath,
       absolutePath: absPath,
       content,
       size: stat.size,
     });
+  }
+
+  getSources() {
+    return this.sources.map(s => ({ dir: s.dir, pattern: s.pattern }));
+  }
+
+  async updateSources(sources) {
+    this.stopWatching();
+    this.sources = sources;
+    await this.scan();
+    if (this.onChange) {
+      this.startWatching(this.onChange);
+    }
   }
 
   getFiles() {
@@ -42,12 +80,12 @@ export class Scanner {
   }
 
   writeFile(relPath, content) {
-    const absPath = join(this.dir, relPath);
-    writeFileSync(absPath, content, 'utf-8');
-    const stat = statSync(absPath);
+    const entry = this.files.get(relPath);
+    if (!entry) return;
+    writeFileSync(entry.absolutePath, content, 'utf-8');
+    const stat = statSync(entry.absolutePath);
     this.files.set(relPath, {
-      relativePath: relPath,
-      absolutePath: absPath,
+      ...entry,
       content,
       size: stat.size,
     });
@@ -55,31 +93,44 @@ export class Scanner {
 
   startWatching(onChange) {
     this.onChange = onChange;
-    this.watcher = watch(this.pattern, {
-      cwd: this.dir,
-      ignoreInitial: true,
-    });
+    for (const { dir, pattern } of this.sources) {
+      const watcher = watch(pattern, {
+        cwd: dir,
+        ignoreInitial: true,
+      });
 
-    this.watcher.on('change', (relPath) => {
-      this._loadFile(relPath);
-      if (this.onChange) this.onChange(relPath, 'change');
-    });
+      watcher.on('change', (relPath) => {
+        const key = this.sources.length > 1
+          ? join(relative(this._commonRoot(), dir), relPath)
+          : relPath;
+        this._loadFile(dir, relPath, key);
+        if (this.onChange) this.onChange(key, 'change');
+      });
 
-    this.watcher.on('add', (relPath) => {
-      this._loadFile(relPath);
-      if (this.onChange) this.onChange(relPath, 'add');
-    });
+      watcher.on('add', (relPath) => {
+        const key = this.sources.length > 1
+          ? join(relative(this._commonRoot(), dir), relPath)
+          : relPath;
+        this._loadFile(dir, relPath, key);
+        if (this.onChange) this.onChange(key, 'add');
+      });
 
-    this.watcher.on('unlink', (relPath) => {
-      this.files.delete(relPath);
-      if (this.onChange) this.onChange(relPath, 'unlink');
-    });
+      watcher.on('unlink', (relPath) => {
+        const key = this.sources.length > 1
+          ? join(relative(this._commonRoot(), dir), relPath)
+          : relPath;
+        this.files.delete(key);
+        if (this.onChange) this.onChange(key, 'unlink');
+      });
+
+      this.watchers.push(watcher);
+    }
   }
 
   stopWatching() {
-    if (this.watcher) {
-      this.watcher.close();
-      this.watcher = null;
+    for (const w of this.watchers) {
+      w.close();
     }
+    this.watchers = [];
   }
 }

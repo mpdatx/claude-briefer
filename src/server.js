@@ -13,7 +13,7 @@ export async function createApp(opts) {
   app.use(express.json());
   app.use(express.static(join(__dirname, '..', 'public')));
 
-  const scanner = new Scanner(opts.dir, opts.glob);
+  const scanner = new Scanner([{ dir: opts.dir, pattern: opts.glob }]);
   await scanner.scan();
 
   const indexer = new Indexer({
@@ -22,13 +22,32 @@ export async function createApp(opts) {
   });
   indexer.buildIndex(scanner.getFiles());
 
-  scanner.startWatching((relPath, event) => {
-    if (event === 'unlink') {
-      indexer.buildIndex(scanner.getFiles());
-    } else {
-      const file = scanner.getFile(relPath);
-      if (file) indexer.reindexFile(relPath, file.content);
+  function startWatch() {
+    scanner.startWatching((relPath, event) => {
+      if (event === 'unlink') {
+        indexer.buildIndex(scanner.getFiles());
+      } else {
+        const file = scanner.getFile(relPath);
+        if (file) indexer.reindexFile(relPath, file.content);
+      }
+    });
+  }
+  startWatch();
+
+  // --- Config routes ---
+
+  app.get('/api/config', (req, res) => {
+    res.json({ sources: scanner.getSources() });
+  });
+
+  app.post('/api/config', async (req, res) => {
+    const { sources } = req.body;
+    if (!Array.isArray(sources) || sources.length === 0) {
+      return res.status(400).json({ error: 'sources array required' });
     }
+    await scanner.updateSources(sources);
+    indexer.buildIndex(scanner.getFiles());
+    res.json({ ok: true, fileCount: scanner.getFiles().length });
   });
 
   // --- File routes ---
