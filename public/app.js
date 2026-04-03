@@ -18,8 +18,8 @@ const editor = initEditor(document.getElementById('editor'), {
     state.dirty = true;
     document.getElementById('save-btn').disabled = false;
   },
-  onNgramClicked: (stemmedNgram) => {
-    loadNgramOccurrences(stemmedNgram);
+  onNgramClicked: (stemmedNgram, allKeys) => {
+    loadNgramOccurrences(stemmedNgram, allKeys);
   },
   onSelectionChange: (sel) => {
     document.getElementById('merge-selection-btn').disabled = !sel;
@@ -114,10 +114,25 @@ async function loadNgrams(filePath) {
   }
 }
 
-async function loadNgramOccurrences(stemmedNgram) {
+async function loadNgramOccurrences(stemmedNgram, allKeys) {
   if (!stemmedNgram || !state.activeFile) return;
-  const data = await api(`/ngrams/${state.activeFile}?ngram=${encodeURIComponent(stemmedNgram)}`);
-  const locations = data.locations || [];
+
+  // Try the primary (longest) key first; if no cross-file results, try others
+  let locations = [];
+  const keysToTry = allKeys ? allKeys.split(',') : [stemmedNgram];
+  // Sort by length descending — try longest first
+  keysToTry.sort((a, b) => b.length - a.length);
+
+  for (const key of keysToTry) {
+    const data = await api(`/ngrams/${state.activeFile}?ngram=${encodeURIComponent(key)}`);
+    const locs = data.locations || [];
+    if (locs.some(l => l.file !== state.activeFile)) {
+      locations = locs;
+      break;
+    }
+    if (locs.length > locations.length) locations = locs;
+  }
+
   const otherLocs = locations.filter(l => l.file !== state.activeFile);
 
   // Auto-open comparison if there's exactly one other file

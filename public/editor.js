@@ -4,7 +4,7 @@ let onNgramClick = null;
 let suppressChange = false;
 
 export function initEditor(container, { onContentChange, onNgramClicked, onSelectionChange }) {
-  onNgramClick = onNgramClicked;
+  onNgramClick = onNgramClicked; // receives (stemmedNgram, allKeys)
   cm = CodeMirror(container, {
     mode: 'markdown',
     lineNumbers: true,
@@ -70,9 +70,10 @@ export function applyHighlights(spans, opts = {}) {
           const from = posFromOffset(lines, lineIdx, multiIdx);
           const to = posFromOffsetEnd(lines, lineIdx, multiIdx + searchText.length);
           const cssClass = getHighlightClass(span.count, opts.maxCount);
+          const allKeys = (span.stemmedKeys || [span.stemmed]).join(',');
           const mark = cm.markText(from, to, {
             className: cssClass,
-            attributes: { 'data-ngram': span.stemmed || '' },
+            attributes: { 'data-ngram': span.stemmed || '', 'data-ngram-keys': allKeys },
           });
           highlights.push(mark);
           found = true;
@@ -81,9 +82,10 @@ export function applyHighlights(spans, opts = {}) {
         const from = { line: lineIdx, ch: charIdx };
         const to = { line: lineIdx, ch: charIdx + searchText.length };
         const cssClass = getHighlightClass(span.count, opts.maxCount);
+        const allKeys = (span.stemmedKeys || [span.stemmed]).join(',');
         const mark = cm.markText(from, to, {
           className: cssClass,
-          attributes: { 'data-ngram': span.stemmed || '' },
+          attributes: { 'data-ngram': span.stemmed || '', 'data-ngram-keys': allKeys },
         });
         highlights.push(mark);
         found = true;
@@ -97,7 +99,8 @@ export function applyHighlights(spans, opts = {}) {
         target.classList.contains('ngram-highlight-strong') ||
         target.classList.contains('ngram-highlight-max')) {
       const ngram = target.getAttribute('data-ngram');
-      if (ngram && onNgramClick) onNgramClick(ngram);
+      const allKeys = target.getAttribute('data-ngram-keys');
+      if (ngram && onNgramClick) onNgramClick(ngram, allKeys);
     }
   };
 }

@@ -162,21 +162,27 @@ export class Indexer {
     spans.sort((a, b) => a.line - b.line || a.startOffset - b.startOffset);
 
     // Merge overlapping spans within the same segment (same line)
+    // Track all stemmed keys absorbed into each merged span
     const merged = [];
     for (const span of spans) {
       if (merged.length === 0) {
-        merged.push({ ...span });
+        merged.push({ ...span, stemmedKeys: [span.stemmed] });
         continue;
       }
       const last = merged[merged.length - 1];
       if (last.line === span.line && span.startOffset <= last.endOffset) {
         // Overlapping within same segment — extend
+        last.stemmedKeys.push(span.stemmed);
         if (span.endOffset > last.endOffset) {
           last.endOffset = span.endOffset;
-          last.count = Math.max(last.count, span.count);
+        }
+        last.count = Math.max(last.count, span.count);
+        // Keep the longest stemmed key as the primary
+        if (span.stemmed.split(' ').length > last.stemmed.split(' ').length) {
+          last.stemmed = span.stemmed;
         }
       } else {
-        merged.push({ ...span });
+        merged.push({ ...span, stemmedKeys: [span.stemmed] });
       }
     }
 
@@ -195,6 +201,7 @@ export class Indexer {
       original: s.original,
       count: s.count,
       stemmed: s.stemmed,
+      stemmedKeys: [...new Set(s.stemmedKeys)],
     }));
   }
 
