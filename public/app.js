@@ -115,8 +115,10 @@ async function loadNgrams(filePath) {
 }
 
 async function loadNgramOccurrences(stemmedNgram) {
+  if (!stemmedNgram || !state.activeFile) return;
   const data = await api(`/ngrams/${state.activeFile}?ngram=${encodeURIComponent(stemmedNgram)}`);
-  const otherLocs = data.locations.filter(l => l.file !== state.activeFile);
+  const locations = data.locations || [];
+  const otherLocs = locations.filter(l => l.file !== state.activeFile);
 
   // Auto-open comparison if there's exactly one other file
   if (otherLocs.length === 1) {
@@ -128,7 +130,7 @@ async function loadNgramOccurrences(stemmedNgram) {
     hideCompare();
   }
 
-  renderNgramOccurrences(stemmedNgram, data.locations, state.activeFile, {
+  renderNgramOccurrences(stemmedNgram, locations, state.activeFile, {
     onKeepOne: handleKeepOne,
     onDelete: handleDelete,
     onConsolidate: handleConsolidate,
