@@ -331,6 +331,63 @@ function renderDiff(before, after) {
   return html || '<span style="color:#666">(no changes)</span>\n';
 }
 
+export function renderNgramList(ngrams, { onSelect, activeNgram, filter, sort }) {
+  const container = document.getElementById('ngram-list');
+  container.innerHTML = '';
+
+  let filtered = ngrams;
+  if (filter) {
+    const lc = filter.toLowerCase();
+    filtered = ngrams.filter(ng => ng.original.toLowerCase().includes(lc));
+  }
+
+  const sorted = [...filtered];
+  switch (sort) {
+    case 'count-desc': sorted.sort((a, b) => b.totalCount - a.totalCount); break;
+    case 'count-asc': sorted.sort((a, b) => a.totalCount - b.totalCount); break;
+    case 'alpha-asc': sorted.sort((a, b) => a.original.localeCompare(b.original)); break;
+    case 'alpha-desc': sorted.sort((a, b) => b.original.localeCompare(a.original)); break;
+    case 'length-desc': sorted.sort((a, b) => b.length - a.length); break;
+    case 'length-asc': sorted.sort((a, b) => a.length - b.length); break;
+    case 'files-desc': sorted.sort((a, b) => b.fileCount - a.fileCount); break;
+    default: sorted.sort((a, b) => b.totalCount - a.totalCount);
+  }
+
+  // Cap at 500 to avoid DOM bloat
+  const capped = sorted.slice(0, 500);
+
+  for (const ng of capped) {
+    const item = document.createElement('div');
+    item.className = 'ngram-item';
+    if (ng.stemmed === activeNgram) item.classList.add('active');
+    item.onclick = () => onSelect(ng);
+
+    const text = document.createElement('div');
+    text.className = 'ngram-item-text';
+    text.textContent = ng.original;
+
+    const meta = document.createElement('div');
+    meta.className = 'ngram-item-meta';
+    meta.textContent = `${ng.totalCount} occurrences · ${ng.fileCount} files · ${ng.length} words`;
+
+    item.appendChild(text);
+    item.appendChild(meta);
+    container.appendChild(item);
+  }
+
+  if (sorted.length > 500) {
+    const more = document.createElement('div');
+    more.className = 'ngram-item-meta';
+    more.style.padding = '8px 10px';
+    more.textContent = `${sorted.length - 500} more not shown. Use filter to narrow results.`;
+    container.appendChild(more);
+  }
+
+  if (capped.length === 0) {
+    container.innerHTML = '<p class="placeholder">No shared n-grams found.</p>';
+  }
+}
+
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

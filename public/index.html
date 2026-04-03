@@ -37,9 +37,30 @@
     </div>
   </header>
   <main id="panels">
-    <aside id="file-list">
-      <input type="text" id="file-search" placeholder="Filter files...">
-      <div id="files"></div>
+    <aside id="left-panel">
+      <div id="left-tabs">
+        <button class="left-tab active" data-tab="files">Files</button>
+        <button class="left-tab" data-tab="ngrams">N-grams</button>
+      </div>
+      <div id="files-tab">
+        <input type="text" id="file-search" placeholder="Filter files...">
+        <div id="files"></div>
+      </div>
+      <div id="ngrams-tab" style="display:none">
+        <div id="ngrams-toolbar">
+          <input type="text" id="ngram-search" placeholder="Filter n-grams...">
+          <select id="ngram-sort">
+            <option value="count-desc">Most occurrences</option>
+            <option value="count-asc">Fewest occurrences</option>
+            <option value="alpha-asc">A → Z</option>
+            <option value="alpha-desc">Z → A</option>
+            <option value="length-desc">Longest first</option>
+            <option value="length-asc">Shortest first</option>
+            <option value="files-desc">Most files</option>
+          </select>
+        </div>
+        <div id="ngram-list"></div>
+      </div>
     </aside>
     <section id="editor-panel">
       <div id="editor-toolbar">

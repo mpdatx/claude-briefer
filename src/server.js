@@ -86,8 +86,14 @@ export async function createApp(opts) {
 
   // --- N-gram routes ---
 
+  app.get('/api/ngrams', (req, res) => {
+    res.json(indexer.getAllSharedNgrams());
+  });
+
   app.get('/api/ngrams/*path', (req, res) => {
     const filePath = [].concat(req.params.path).join('/');
+    if (!filePath) return res.json(indexer.getAllSharedNgrams());
+
     const file = scanner.getFile(filePath);
     if (!file) return res.status(404).json({ error: 'File not found' });
 
@@ -100,7 +106,6 @@ export async function createApp(opts) {
     const spans = indexer.getMergedSpans(filePath);
     res.json({ ngrams, spans });
   });
-
 
   app.get('/api/redundancy', (req, res) => {
     if (req.query.file) {

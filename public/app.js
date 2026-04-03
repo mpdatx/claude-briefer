@@ -1,5 +1,5 @@
 import { initEditor, setContent, getContent, getSelection, applyHighlights, showCompare, hideCompare } from './editor.js';
-import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, renderSelectionActions, renderSections, renderSectionActions, showDiffModal } from './panels.js';
+import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, renderSelectionActions, renderSections, renderSectionActions, showDiffModal, renderNgramList } from './panels.js';
 
 let state = {
   files: [],
@@ -354,6 +354,8 @@ async function refresh() {
     document.getElementById('save-btn').disabled = true;
     await loadNgrams(state.activeFile);
   }
+  // Refresh n-gram browser if visible
+  if (leftTab === 'ngrams') loadAllNgrams();
 }
 
 document.getElementById('save-btn').onclick = save;
@@ -382,6 +384,77 @@ document.getElementById('min-occurrences').oninput = (e) => {
     const maxCount = Math.max(...filteredSpans.map(s => s.count || 2), 2);
     applyHighlights(filteredSpans, { maxCount });
   }
+};
+
+// --- Left panel tabs ---
+
+let leftTab = 'files';
+let allSharedNgrams = [];
+let ngramFilter = '';
+let ngramSort = 'count-desc';
+let activeNgramKey = null;
+
+document.querySelectorAll('.left-tab').forEach(btn => {
+  btn.onclick = () => {
+    leftTab = btn.dataset.tab;
+    document.querySelectorAll('.left-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('files-tab').style.display = leftTab === 'files' ? '' : 'none';
+    document.getElementById('ngrams-tab').style.display = leftTab === 'ngrams' ? '' : 'none';
+    if (leftTab === 'ngrams' && allSharedNgrams.length === 0) {
+      loadAllNgrams();
+    }
+  };
+});
+
+async function loadAllNgrams() {
+  allSharedNgrams = await api('/ngrams');
+  reRenderNgramList();
+}
+
+function reRenderNgramList() {
+  renderNgramList(allSharedNgrams, {
+    onSelect: handleNgramBrowserSelect,
+    activeNgram: activeNgramKey,
+    filter: ngramFilter,
+    sort: ngramSort,
+  });
+}
+
+async function handleNgramBrowserSelect(ng) {
+  activeNgramKey = ng.stemmed;
+  reRenderNgramList();
+
+  // Load locations and show in right panel
+  const data = await api(`/ngrams/${encodeURIComponent(ng.files[0])}?ngram=${encodeURIComponent(ng.stemmed)}`);
+  const locations = data.locations || [];
+
+  // If a file is selected, open comparison; otherwise select first file
+  if (!state.activeFile && ng.files.length > 0) {
+    await selectFile(ng.files[0]);
+  }
+
+  const otherLocs = locations.filter(l => l.file !== state.activeFile);
+  if (otherLocs.length > 0) {
+    openComparison(otherLocs[0].file, otherLocs[0].original);
+  }
+
+  renderNgramOccurrences(ng.stemmed, locations, state.activeFile, {
+    onKeepOne: handleKeepOne,
+    onDelete: handleDelete,
+    onConsolidate: handleConsolidate,
+    onCompare: (file, original) => openComparison(file, original),
+  });
+}
+
+document.getElementById('ngram-search').oninput = (e) => {
+  ngramFilter = e.target.value;
+  reRenderNgramList();
+};
+
+document.getElementById('ngram-sort').onchange = (e) => {
+  ngramSort = e.target.value;
+  reRenderNgramList();
 };
 
 // --- Sources editor ---

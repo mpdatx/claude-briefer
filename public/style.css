@@ -114,12 +114,97 @@ body {
   overflow: hidden;
 }
 
-#file-list {
-  width: 260px;
+#left-panel {
+  width: 280px;
   border-right: 1px solid #3c3c3c;
   display: flex;
   flex-direction: column;
   background: #252526;
+}
+
+#left-tabs {
+  display: flex;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.left-tab {
+  flex: 1;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.left-tab:hover { color: #d4d4d4; }
+.left-tab.active { color: #d4d4d4; border-bottom-color: #569cd6; }
+
+#files-tab, #ngrams-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#ngrams-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+#ngram-search {
+  padding: 6px 8px;
+  border: none;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-size: 12px;
+  outline: none;
+  border-radius: 3px;
+}
+
+#ngram-search::placeholder { color: #888; }
+
+#ngram-sort {
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 3px 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#ngram-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ngram-item {
+  padding: 5px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #2d2d30;
+  font-size: 12px;
+}
+
+.ngram-item:hover { background: #2a2d2e; }
+.ngram-item.active { background: #37373d; }
+
+.ngram-item-text {
+  color: #dcdcaa;
+  font-family: 'SF Mono', Menlo, monospace;
+  word-break: break-word;
+}
+
+.ngram-item-meta {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 #file-search {

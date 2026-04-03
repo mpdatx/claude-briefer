@@ -133,6 +133,27 @@ export class Indexer {
     return this.index.get(stemmedNgram) || [];
   }
 
+  getAllSharedNgrams() {
+    const results = [];
+    const seen = new Set();
+    for (const [stemmed, locations] of this.index) {
+      const files = new Set(locations.map(l => l.file));
+      if (files.size < 2) continue;
+      if (seen.has(stemmed)) continue;
+      seen.add(stemmed);
+      results.push({
+        stemmed,
+        original: locations[0].original,
+        tag: locations[0].tag,
+        fileCount: files.size,
+        totalCount: locations.length,
+        files: [...files],
+        length: stemmed.split(' ').length,
+      });
+    }
+    return results;
+  }
+
   getMergedSpans(filePath) {
     const sharedKeys = new Set();
     for (const ng of this.getSharedNgrams(filePath)) {
