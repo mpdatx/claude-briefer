@@ -331,6 +331,47 @@ function renderDiff(before, after) {
   return html || '<span style="color:#666">(no changes)</span>\n';
 }
 
+export function renderSearchResults(container, { query, results, onSelectResult, onClose }) {
+  // results: [{ file, line, original, contextBefore, contextAfter }]
+  // Group by file
+  const grouped = new Map();
+  for (const r of results) {
+    if (!grouped.has(r.file)) grouped.set(r.file, []);
+    grouped.get(r.file).push(r);
+  }
+
+  let html = `
+    <div class="search-results-header">
+      <span>"${escapeHtml(query)}" — ${results.length} result${results.length !== 1 ? 's' : ''} in ${grouped.size} file${grouped.size !== 1 ? 's' : ''}</span>
+      <button id="close-search-results">Back to editor</button>
+    </div>`;
+
+  for (const [file, items] of grouped) {
+    html += `<div class="search-file-group">`;
+    html += `<div class="search-file-name">${escapeHtml(file)}</div>`;
+    for (const item of items) {
+      const before = item.contextBefore ? `<span class="search-result-context">${escapeHtml(item.contextBefore)}</span>` : '';
+      const after = item.contextAfter ? `<span class="search-result-context">${escapeHtml(item.contextAfter)}</span>` : '';
+      html += `
+        <div class="search-result-item" data-file="${escapeHtml(item.file)}" data-line="${item.line}" data-original="${escapeHtml(item.original)}">
+          <span class="search-result-line">${item.line}</span>
+          <span class="search-result-text">${before}<mark>${escapeHtml(item.original)}</mark>${after}</span>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+
+  container.querySelector('#close-search-results').onclick = onClose;
+
+  container.querySelectorAll('.search-result-item').forEach(el => {
+    el.onclick = () => {
+      onSelectResult(el.dataset.file, parseInt(el.dataset.line, 10), el.dataset.original);
+    };
+  });
+}
+
 export function renderNgramList(ngrams, { onSelect, activeNgram, filter, sort }) {
   const container = document.getElementById('ngram-list');
   container.innerHTML = '';

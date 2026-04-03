@@ -1,5 +1,5 @@
 import { initEditor, setContent, getContent, getSelection, applyHighlights, showCompare, hideCompare } from './editor.js';
-import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, renderSelectionActions, renderSections, renderSectionActions, showDiffModal, renderNgramList } from './panels.js';
+import { renderFileList, renderRedundancyOverview, renderNgramOccurrences, renderSelectionActions, renderSections, renderSectionActions, showDiffModal, renderNgramList, renderSearchResults } from './panels.js';
 
 let state = {
   files: [],
@@ -421,29 +421,76 @@ function reRenderNgramList() {
   });
 }
 
+function showSearchResults() {
+  document.getElementById('search-results').style.display = '';
+  document.getElementById('editor-container').style.display = 'none';
+  document.getElementById('editor-toolbar').style.display = 'none';
+}
+
+function hideSearchResults() {
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('editor-container').style.display = '';
+  document.getElementById('editor-toolbar').style.display = '';
+}
+
 async function handleNgramBrowserSelect(ng) {
   activeNgramKey = ng.stemmed;
   reRenderNgramList();
 
-  // Load locations and show in right panel
+  // Fetch all locations and build search results with context
   const data = await api(`/ngrams/${encodeURIComponent(ng.files[0])}?ngram=${encodeURIComponent(ng.stemmed)}`);
   const locations = data.locations || [];
 
-  // If a file is selected, open comparison; otherwise select first file
-  if (!state.activeFile && ng.files.length > 0) {
-    await selectFile(ng.files[0]);
+  // Fetch file contents to build context snippets
+  const fileContents = {};
+  for (const loc of locations) {
+    if (!fileContents[loc.file]) {
+      const fd = await api(`/files/${loc.file}`);
+      fileContents[loc.file] = fd.content;
+    }
   }
 
-  const otherLocs = locations.filter(l => l.file !== state.activeFile);
-  if (otherLocs.length > 0) {
-    openComparison(otherLocs[0].file, otherLocs[0].original);
-  }
+  // Build results with surrounding context
+  const results = locations.map(loc => {
+    const content = fileContents[loc.file] || '';
+    const lines = content.split('\n');
+    const lineIdx = Math.max(0, (loc.line || 1) - 1);
 
-  renderNgramOccurrences(ng.stemmed, locations, state.activeFile, {
-    onKeepOne: handleKeepOne,
-    onDelete: handleDelete,
-    onConsolidate: handleConsolidate,
-    onCompare: (file, original) => openComparison(file, original),
+    // Find the actual line containing the match
+    let matchLine = lineIdx;
+    for (let i = Math.max(0, lineIdx - 1); i < Math.min(lines.length, lineIdx + 3); i++) {
+      if (lines[i] && lines[i].includes(loc.original)) {
+        matchLine = i;
+        break;
+      }
+    }
+
+    const contextBefore = matchLine > 0 ? lines[matchLine - 1] : '';
+    const contextAfter = matchLine < lines.length - 1 ? lines[matchLine + 1] : '';
+
+    return {
+      file: loc.file,
+      line: matchLine + 1,
+      original: loc.original,
+      contextBefore: contextBefore.trim() ? contextBefore.trimEnd() + '  ' : '',
+      contextAfter: contextAfter.trim() ? '  ' + contextAfter.trimStart() : '',
+    };
+  });
+
+  showSearchResults();
+  renderSearchResults(document.getElementById('search-results'), {
+    query: ng.original,
+    results,
+    onSelectResult: async (file, line, original) => {
+      hideSearchResults();
+      hideCompare();
+      await selectFile(file);
+
+      // Scroll editor to the match line
+      const cm = editor;
+      cm.scrollIntoView({ line: line - 1, ch: 0 }, 100);
+    },
+    onClose: hideSearchResults,
   });
 }
 
