@@ -28,11 +28,24 @@
       </div>
     </div>
     <div id="sources-editor" style="display:none">
-      <div id="sources-list"></div>
+      <div id="sources-grid">
+        <div class="sources-col">
+          <label class="sources-label">Include patterns</label>
+          <div id="include-list"></div>
+          <button id="add-include-btn" class="sources-add-btn">+ Add</button>
+        </div>
+        <div class="sources-col">
+          <label class="sources-label">Exclude patterns</label>
+          <div id="exclude-list"></div>
+          <button id="add-exclude-btn" class="sources-add-btn">+ Add</button>
+        </div>
+      </div>
       <div id="sources-actions">
-        <button id="add-source-btn">+ Add path</button>
-        <button id="apply-sources-btn">Rescan</button>
-        <button id="cancel-sources-btn">Cancel</button>
+        <span id="sources-dir" style="color:#888;font-size:11px"></span>
+        <div>
+          <button id="apply-sources-btn">Rescan</button>
+          <button id="cancel-sources-btn">Cancel</button>
+        </div>
       </div>
     </div>
   </header>

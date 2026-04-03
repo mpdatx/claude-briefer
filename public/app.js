@@ -459,40 +459,44 @@ document.getElementById('ngram-sort').onchange = (e) => {
 
 // --- Sources editor ---
 
-let cachedSources = [];
+let editInclude = [];
+let editExclude = [];
 
-async function loadConfig() {
-  const config = await api('/config');
-  cachedSources = config.sources || [];
-}
-
-function renderSourceRows() {
-  const container = document.getElementById('sources-list');
+function renderPatternList(container, patterns, onChange) {
   container.innerHTML = '';
-  for (let i = 0; i < cachedSources.length; i++) {
-    const s = cachedSources[i];
+  for (let i = 0; i < patterns.length; i++) {
     const row = document.createElement('div');
-    row.className = 'source-row';
+    row.className = 'pattern-row';
     row.innerHTML = `
-      <input class="source-dir" type="text" value="${s.dir}" placeholder="/path/to/dir">
-      <input class="source-pattern" type="text" value="${s.pattern}" placeholder="**/*.md">
-      <button class="remove-source" title="Remove">&times;</button>
+      <input type="text" value="${patterns[i]}" placeholder="**/*.md">
+      <button title="Remove">&times;</button>
     `;
-    row.querySelector('.source-dir').oninput = (e) => { cachedSources[i].dir = e.target.value; };
-    row.querySelector('.source-pattern').oninput = (e) => { cachedSources[i].pattern = e.target.value; };
-    row.querySelector('.remove-source').onclick = () => {
-      if (cachedSources.length > 1) {
-        cachedSources.splice(i, 1);
-        renderSourceRows();
-      }
+    row.querySelector('input').oninput = (e) => {
+      patterns[i] = e.target.value;
+    };
+    row.querySelector('button').onclick = () => {
+      patterns.splice(i, 1);
+      onChange();
     };
     container.appendChild(row);
   }
 }
 
+function renderSourcesEditor() {
+  renderPatternList(
+    document.getElementById('include-list'), editInclude, renderSourcesEditor
+  );
+  renderPatternList(
+    document.getElementById('exclude-list'), editExclude, renderSourcesEditor
+  );
+}
+
 document.getElementById('edit-sources-btn').onclick = async () => {
-  await loadConfig();
-  renderSourceRows();
+  const config = await api('/config');
+  editInclude = [...(config.include || ['**/*.md'])];
+  editExclude = [...(config.exclude || [])];
+  document.getElementById('sources-dir').textContent = `Root: ${config.dir}`;
+  renderSourcesEditor();
   document.getElementById('sources-editor').style.display = '';
 };
 
@@ -500,18 +504,24 @@ document.getElementById('cancel-sources-btn').onclick = () => {
   document.getElementById('sources-editor').style.display = 'none';
 };
 
-document.getElementById('add-source-btn').onclick = () => {
-  cachedSources.push({ dir: '', pattern: '**/*.md' });
-  renderSourceRows();
+document.getElementById('add-include-btn').onclick = () => {
+  editInclude.push('**/*.md');
+  renderSourcesEditor();
+};
+
+document.getElementById('add-exclude-btn').onclick = () => {
+  editExclude.push('');
+  renderSourcesEditor();
 };
 
 document.getElementById('apply-sources-btn').onclick = async () => {
-  const valid = cachedSources.filter(s => s.dir.trim());
-  if (valid.length === 0) return;
+  const include = editInclude.filter(p => p.trim());
+  const exclude = editExclude.filter(p => p.trim());
+  if (include.length === 0) return;
 
-  const result = await api('/config', {
+  await api('/config', {
     method: 'POST',
-    body: { sources: valid },
+    body: { include, exclude },
   });
 
   document.getElementById('sources-editor').style.display = 'none';
@@ -519,6 +529,7 @@ document.getElementById('apply-sources-btn').onclick = async () => {
   state.pairwiseScores = null;
   hideCompare();
   await loadFiles();
+  if (leftTab === 'ngrams') loadAllNgrams();
   document.getElementById('context-content').innerHTML =
     '<p class="placeholder">Select a file to view redundancy info.</p>';
 };

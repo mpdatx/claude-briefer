@@ -10,6 +10,7 @@ function parseArgs(args) {
   const opts = {
     dir: null,
     glob: '**/*.md',
+    exclude: [],
     port: 3000,
     ngramMin: 3,
     ngramMax: 8,
@@ -19,6 +20,9 @@ function parseArgs(args) {
     switch (args[i]) {
       case '--glob':
         opts.glob = args[++i];
+        break;
+      case '--exclude':
+        opts.exclude.push(args[++i]);
         break;
       case '--port':
         opts.port = parseInt(args[++i], 10);
@@ -45,10 +49,11 @@ if (!opts.dir) {
   console.error('Usage: claude-briefer <directory> [options]');
   console.error('');
   console.error('Options:');
-  console.error('  --glob <pattern>     File pattern (default: "**/*.md")');
-  console.error('  --port <number>      Server port (default: 3000)');
-  console.error('  --ngram-min <n>      Min n-gram size (default: 3)');
-  console.error('  --ngram-max <n>      Max n-gram size (default: 8)');
+  console.error('  --glob <pattern>       File pattern (default: "**/*.md")');
+  console.error('  --exclude <pattern>    Exclude pattern (repeatable)');
+  console.error('  --port <number>        Server port (default: 3000)');
+  console.error('  --ngram-min <n>        Min n-gram size (default: 3)');
+  console.error('  --ngram-max <n>        Max n-gram size (default: 8)');
   process.exit(1);
 }
 
